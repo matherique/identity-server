@@ -1,0 +1,19 @@
+service1:
+  name: "Serviço 1"
+  depends_on:
+    - service2
+    - service4
+
+service2:
+  name: "Serviço 2"
+  depends_on:
+    - service3
+    - service4
+
+service3:
+  name: "Serviço 3"
+  depends_on:
+    - service4
+
+service4:
+  name: "Serviço 4"
