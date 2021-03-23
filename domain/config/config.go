@@ -34,7 +34,6 @@ func (c *Config) SetFromBytes(data []byte) error {
 		return fmt.Errorf("could not convert to Service %v", err)
 	}
 
-	fmt.Print(serviceList)
 	c.services = serviceList
 
 	return nil
@@ -53,6 +52,17 @@ func (c *Config) SetFromFile(filename string) error {
 	}
 
 	return nil
+}
+
+// GetService get the service by id
+func (c *Config) GetService(id string) (*service.Service, error) {
+	for i := range c.services {
+		if c.services[i].Id == id {
+			return &c.services[i], nil
+		}
+	}
+
+	return nil, fmt.Errorf("no service found with id '%v'", id)
 }
 
 // convertToService converts map[interface{}]interface{} to service struct
@@ -81,7 +91,7 @@ func convertToService(m map[interface{}]interface{}) ([]service.Service, error) 
 		}
 
 		s = service.Service{
-			Key:        k.(string),
+			Id:         k.(string),
 			Name:       config["name"].(string),
 			Depends_on: depends_on,
 		}

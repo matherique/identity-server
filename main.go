@@ -21,4 +21,10 @@ func main() {
 		panic(err)
 	}
 
+	//s, err := config.GetService("service1")
+
+	if err != nil {
+		panic(err)
+	}
+
 }
