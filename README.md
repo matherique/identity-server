@@ -1,11 +1,8 @@
 # Identity Server
 
-A simple version of Identity Server 4 in Go
+A mini identity server
 
-## Example 
-
-Service 1 -> Service 2
-
+## How it works
 
 ```
 Service A                                             IS
