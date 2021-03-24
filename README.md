@@ -5,17 +5,17 @@ A mini identity server
 ## How it works
 
 ```
-                                Service A                                             IS
-                                               -- (1)Authorization Request ->
+Service A                                             IS
+               -- (1)Authorization Request ->
 
-                                               <- (2)Authorization Grant --
-                                                         Token IS
+               <- (2)Authorization Grant --
+                         Token IS
 
-                                               -- (3)Authorization Request ->
-                                                         to Service B
+               -- (3)Authorization Request ->
+                         to Service B
 
-                                               <- (4)Authorization Grant -- 
-                                                         Token Service B
+               <- (4)Authorization Grant -- 
+                         Token Service B
 
 ```
 
