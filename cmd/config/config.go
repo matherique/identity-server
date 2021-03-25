@@ -2,8 +2,8 @@ package config
 
 import (
 	"fmt"
-	service "github.com/matherique/identity-service/domain/service"
-	marshal "github.com/matherique/identity-service/lib"
+	service "github.com/matherique/identity-service/cmd/service"
+	marshal "github.com/matherique/identity-service/lib/marshal"
 	"io/ioutil"
 )
 

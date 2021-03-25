@@ -1,7 +1,7 @@
 package main
 
 import (
-	config "github.com/matherique/identity-service/domain/config"
+	config "github.com/matherique/identity-service/cmd/config"
 	"io/ioutil"
 )
 
