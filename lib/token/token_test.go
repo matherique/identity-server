@@ -7,17 +7,13 @@ import (
 )
 
 var secret []byte = []byte("1234")
-var idPayload string = "service_test"
+var payload string = "service_test"
 
 func TestCreateToken(t *testing.T) {
 	tokenPrefix := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+	exp := time.Now().Add(time.Hour * 2).Unix()
 
-	handler := Token{
-		secret: secret,
-		exp:    time.Now().Add(time.Hour * 2).Unix(),
-	}
-
-	token, err := handler.GenerateToken(idPayload)
+	token, err := GenerateToken(payload, secret, exp)
 
 	if err != nil {
 		t.Errorf("error in token creation: %v", err)
@@ -29,14 +25,11 @@ func TestCreateToken(t *testing.T) {
 }
 
 func TestValidateToken(t *testing.T) {
-	handler := Token{
-		secret: secret,
-		exp:    time.Now().Add(time.Hour * 1).Unix(),
-	}
+	exp := time.Now().Add(time.Hour * 1).Unix()
 
-	token, err := handler.GenerateToken(idPayload)
+	token, err := GenerateToken(payload, secret, exp)
 
-	isValid, err := handler.Validate(token)
+	isValid, err := ValidateToken(token, secret)
 
 	if err != nil {
 		t.Errorf("error in token validation: %v", err)
@@ -45,4 +38,21 @@ func TestValidateToken(t *testing.T) {
 	if !isValid {
 		t.Errorf("expect validation return %t, got %t", true, false)
 	}
+}
+
+func TestGetData(t *testing.T) {
+	exp := time.Now().Add(time.Hour * 1).Unix()
+
+	token, err := GenerateToken(payload, secret, exp)
+
+	data, err := GetTokenData(token, secret)
+
+	if err != nil {
+		t.Errorf("could not get data from token: %v", err)
+	}
+
+	if data != payload {
+		t.Errorf("expect data to be %v, got %v", payload, data)
+	}
+
 }
