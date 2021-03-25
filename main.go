@@ -3,6 +3,7 @@ package main
 import (
 	config "github.com/matherique/identity-service/cmd/config"
 	"io/ioutil"
+	"log"
 )
 
 const CONFIG_FILE = "./default.yml"
@@ -27,4 +28,5 @@ func main() {
 		panic(err)
 	}
 
+	log.Fatal(NewServer(":8000", config))
 }
