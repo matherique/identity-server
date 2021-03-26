@@ -28,5 +28,10 @@ func main() {
 		panic(err)
 	}
 
-	log.Fatal(NewServer(":8000", config))
+	server := Server{
+		port:   ":8000",
+		config: &config,
+	}
+
+	log.Fatal(server.NewServer())
 }
