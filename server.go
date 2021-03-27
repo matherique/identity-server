@@ -4,11 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/matherique/identity-service/cmd/config"
 	"github.com/matherique/identity-service/lib/token"
 )
+
+var SECRET []byte = []byte("AAAA")
 
 type HandlerRequest = func(http.ResponseWriter, *http.Request)
 
@@ -26,50 +29,62 @@ type ServerRequest struct {
 	Id string `json:"id"`
 }
 
-func (s *Server) NewServer() error {
-	routes := Routes{config: s.config}
-
-	http.HandleFunc("/", routes.Home)
-	http.HandleFunc("/auth", routes.Auth)
-	http.HandleFunc("/validate", routes.Validate)
-
-	return http.ListenAndServe(s.port, nil)
-}
-
 type TokenResponse struct {
 	AccessToken  string `json:"accessToken"`
 	RefreshToken string `json:"refreshToken"`
 }
 
-type Routes struct {
-	config *config.Config
+func (s *Server) NewServer() error {
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			w.WriteHeader(http.StatusNotFound)
+			fmt.Fprint(w, "not found")
+
+			return
+		}
+
+		resp := Response{
+			Status:  http.StatusOK,
+			Message: "works",
+		}
+
+		json.NewEncoder(w).Encode(resp)
+
+	})
+
+	http.HandleFunc("/auth", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Content-Type", "application/json")
+		if r.Method != "POST" {
+			w.WriteHeader(http.StatusNotFound)
+			fmt.Fprint(w, "not found")
+
+			return
+		}
+
+		isAuth, err := Authenticate(w, r, s.config)
+
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			fmt.Fprint(w, err)
+
+			return
+		}
+
+		var resp interface{}
+
+		if isAuth {
+			resp = withAuth(w, r, s.config)
+		} else {
+			resp = withNoAuth(w, r, s.config)
+		}
+
+		json.NewEncoder(w).Encode(resp)
+	})
+
+	return http.ListenAndServe(s.port, nil)
 }
 
-func (route *Routes) Home(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprint(w, "not found")
-
-		return
-	}
-
-	resp := Response{
-		Status:  http.StatusOK,
-		Message: "works",
-	}
-
-	json.NewEncoder(w).Encode(resp)
-}
-
-func (route *Routes) Auth(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprint(w, "not found")
-
-		return
-	}
-
-	w.Header().Add("Content-Type", "application/json")
+func withNoAuth(w http.ResponseWriter, r *http.Request, config *config.Config) interface{} {
 	var resp interface{}
 
 	var data ServerRequest
@@ -77,59 +92,103 @@ func (route *Routes) Auth(w http.ResponseWriter, r *http.Request) {
 	json.NewDecoder(r.Body).Decode(&data)
 	defer r.Body.Close()
 
-	service, err := route.config.GetService(data.Id)
+	service, err := config.GetService(data.Id)
+
+	resp = generateTokens(service.Id, SECRET)
 
 	if err != nil {
 		resp = Response{
 			Status:  http.StatusInternalServerError,
 			Message: fmt.Sprintf("invalid id: %v", err),
 		}
-		json.NewEncoder(w).Encode(resp)
-		return
+		return resp
 	}
 
+	return resp
+
+}
+
+func withAuth(w http.ResponseWriter, r *http.Request, config *config.Config) interface{} {
+	var resp interface{}
+	var data ServerRequest
+
+	authHeader := r.Header.Get("Authorization")
+	accessToken := strings.TrimPrefix(authHeader, "Bearer ")
+
+	payload, err := token.GetTokenData(accessToken, SECRET)
+
+	if err != nil {
+		resp = Response{
+			Status:  http.StatusInternalServerError,
+			Message: fmt.Sprintf("error in token parser: %v", err),
+		}
+		return resp
+	}
+
+	serviceA, err := config.GetService(payload.(string))
+
+	json.NewDecoder(r.Body).Decode(&data)
+	defer r.Body.Close()
+
+	serviceB, err := config.GetService(data.Id)
+
+	if err != nil {
+		resp = Response{
+			Status:  http.StatusInternalServerError,
+			Message: fmt.Sprintf("invalid service: %v", err),
+		}
+		return resp
+	}
+
+	if serviceA.IsDependent(serviceB.Id) {
+		resp = generateTokens(serviceA.Id, serviceB.Secret)
+
+	}
+
+	return resp
+
+}
+
+func Authenticate(w http.ResponseWriter, r *http.Request, config *config.Config) (bool, error) {
+	authHeader := r.Header.Get("Authorization")
+
+	if authHeader == "" {
+		return false, nil
+	}
+
+	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+
+	isValid, err := token.ValidateToken(tokenString, SECRET)
+
+	if err != nil {
+		return false, err
+	}
+
+	if !isValid {
+		return false, fmt.Errorf("invalid token")
+	}
+
+	return true, nil
+}
+
+func generateTokens(payload string, secret []byte) interface{} {
 	DAY := time.Hour * 24
 
 	expAccessToken := time.Now().Add(DAY).Unix()
 	expRefreshToken := time.Now().Add(DAY * 7).Unix()
 
-	SECRET := []byte("AAAA")
-
-	accessToken, err := token.GenerateToken(service.Id, SECRET, expAccessToken)
-	refreshToken, err := token.GenerateToken(service.Id, SECRET, expRefreshToken)
+	accessToken, err := token.GenerateToken(payload, secret, expAccessToken)
+	refreshToken, err := token.GenerateToken(payload, secret, expRefreshToken)
 
 	if err != nil {
-		resp = Response{
+		return Response{
 			Status:  http.StatusInternalServerError,
-			Message: fmt.Sprintf("error when try to create token: %v", err),
+			Message: fmt.Sprintf("error in token creation: %v", err),
 		}
-
-		json.NewEncoder(w).Encode(resp)
-		return
 	}
 
-	resp = TokenResponse{
+	return TokenResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	}
-
-	json.NewEncoder(w).Encode(resp)
-}
-
-func (route *Routes) Validate(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprint(w, "not found")
-
-		return
-	}
-
-	w.Header().Add("Content-Type", "application/json")
-
-	resp := Response{
-		Status:  http.StatusOK,
-		Message: "not implemented",
-	}
-
-	json.NewEncoder(w).Encode(resp)
 }

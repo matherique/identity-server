@@ -4,6 +4,7 @@ type Service struct {
 	Id         string
 	Name       string
 	Depends_on []string
+	Secret     []byte
 }
 
 func (s *Service) IsDependent(id string) bool {

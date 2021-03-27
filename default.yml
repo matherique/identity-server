@@ -1,19 +1,23 @@
 service1:
   name: "Serviço 1"
+  secret: "AAAAAAAAAAAAAAAAA"
   depends_on:
     - service2
     - service4
 
 service2:
   name: "Serviço 2"
+  secret: "BBBBBBBBBBBBBBBBB"
   depends_on:
     - service3
     - service4
 
 service3:
   name: "Serviço 3"
+  secret: "CCCCCCCCCCCCCCCCC"
   depends_on:
     - service4
 
 service4:
+  secret: "DDDDDDDDDDDDDDDDD"
   name: "Serviço 4"

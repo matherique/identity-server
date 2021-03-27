@@ -12,20 +12,20 @@ func main() {
 	data, err := ioutil.ReadFile(CONFIG_FILE)
 
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	config := config.Config{}
 	err = config.SetFromBytes(data)
 
 	if err != nil {
-		panic(err)
+		log.Println(err)
 	}
 
 	//s, err := config.GetService("service1")
 
 	if err != nil {
-		panic(err)
+		log.Println(err)
 	}
 
 	server := Server{

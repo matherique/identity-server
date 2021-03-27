@@ -90,9 +90,12 @@ func convertToService(m map[interface{}]interface{}) ([]service.Service, error) 
 			depends_on = append(depends_on, listDependsOn[i].(string))
 		}
 
+		secret := config["secret"].(string)
+
 		s = service.Service{
 			Id:         k.(string),
 			Name:       config["name"].(string),
+			Secret:     []byte(secret),
 			Depends_on: depends_on,
 		}
 

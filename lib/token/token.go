@@ -44,7 +44,7 @@ func GetTokenData(token string, secret []byte) (interface{}, error) {
 	tokenParsed, err := verify(token, secret)
 
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
 	payload, ok := tokenParsed.Claims.(jwt.MapClaims)["id"].(string)

@@ -26,7 +26,7 @@ Service A                                             IS
 (2)  If service A is configurated in IS, its responds with 
      token and refreshToken
 
-     body { token: "token", refreshToken: "refreshToken" }
+     body { accessToken: "token", refreshToken: "refreshToken" }
 
 (3)  The service A request authorization to use Serice B 
 
@@ -40,5 +40,5 @@ Service A                                             IS
 
 
 The only token that refresh is the IS token, the others expires in X time and
-you need to request the new token for IS
+you need to request the new token to IS
 
