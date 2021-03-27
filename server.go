@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/matherique/identity-service/cmd/config"
+	"github.com/matherique/identity-service/lib/token"
 )
 
 type HandlerRequest = func(http.ResponseWriter, *http.Request)
@@ -25,18 +27,35 @@ type ServerRequest struct {
 }
 
 func (s *Server) NewServer() error {
+	routes := Routes{config: s.config}
+
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Type", "application/json")
 
 		var resp interface{}
-		home := Home{config: s.config}
+		home := Routes{config: s.config}
 
 		switch r.Method {
 		case "GET":
-			resp = home.GET(w, r)
+			resp = home.Home(w, r)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+			fmt.Fprint(w, "not found")
 
+			return
+		}
+
+		json.NewEncoder(w).Encode(resp)
+	})
+
+	http.HandleFunc("/auth", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Content-Type", "application/json")
+
+		var resp interface{}
+
+		switch r.Method {
 		case "POST":
-			resp = home.POST(w, r)
+			resp = routes.Auth(w, r)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 			fmt.Fprint(w, "not found")
@@ -50,19 +69,24 @@ func (s *Server) NewServer() error {
 	return http.ListenAndServe(s.port, nil)
 }
 
-type Home struct {
+type TokenResponse struct {
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
+}
+
+type Routes struct {
 	config *config.Config
 }
 
-func (h *Home) GET(w http.ResponseWriter, r *http.Request) interface{} {
+func (h *Routes) Home(w http.ResponseWriter, r *http.Request) interface{} {
 	return Response{
 		Status:  http.StatusOK,
 		Message: "works",
 	}
 }
 
-func (h *Home) POST(w http.ResponseWriter, r *http.Request) interface{} {
-	var resp Response
+func (h *Routes) Auth(w http.ResponseWriter, r *http.Request) interface{} {
+	var resp interface{}
 	var data ServerRequest
 
 	json.NewDecoder(r.Body).Decode(&data)
@@ -77,9 +101,26 @@ func (h *Home) POST(w http.ResponseWriter, r *http.Request) interface{} {
 		}
 	}
 
-	resp = Response{
-		Status:  http.StatusOK,
-		Message: fmt.Sprintf("service name: %v", service.Name),
+	DAY := time.Hour * 24
+
+	expAccessToken := time.Now().Add(DAY).Unix()
+	expRefreshToken := time.Now().Add(DAY * 7).Unix()
+
+	SECRET := []byte("AAAA")
+
+	accessToken, err := token.GenerateToken(service.Id, SECRET, expAccessToken)
+	refreshToken, err := token.GenerateToken(service.Id, SECRET, expRefreshToken)
+
+	if err != nil {
+		resp = Response{
+			Status:  http.StatusInternalServerError,
+			Message: fmt.Sprintf("error when try to create token: %v", err),
+		}
+	}
+
+	resp = TokenResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
 	}
 
 	return resp

@@ -8,7 +8,7 @@ echo "POST"
 
 curl \
   --header "Content-Type: application/json" \
-  -X POST http://localhost:8000 \
+  -X POST http://localhost:8000/auth \
   --data '{"id": "service1"}' \
 
 
