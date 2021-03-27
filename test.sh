@@ -20,3 +20,10 @@ curl --silent \
   --data '{"id": "service2"}' \
   -X POST http://localhost:8000/auth | jq
 
+echo "POST /auth - with token and invalid service"
+
+curl --silent \
+  --header "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2MTY5NDE3MjQsImlkIjoic2VydmljZTEifQ.Va89vSc1dLcEo4b9T0uOlKuTjo9MMnQDXj00qGi-erg" \
+  --header "Content-Type: application/json" \
+  --data '{"id": "service3"}' \
+  -X POST http://localhost:8000/auth | jq

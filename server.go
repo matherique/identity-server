@@ -140,13 +140,14 @@ func withAuth(w http.ResponseWriter, r *http.Request, config *config.Config) int
 		return resp
 	}
 
-	if serviceA.IsDependent(serviceB.Id) {
-		resp = generateTokens(serviceA.Id, serviceB.Secret)
-
+	if !serviceA.IsDependent(serviceB.Id) {
+		return Response{
+			Status:  http.StatusUnauthorized,
+			Message: fmt.Sprintf("%s not depends on %s", serviceA.Name, serviceB.Name),
+		}
 	}
 
-	return resp
-
+	return generateTokens(serviceA.Id, serviceB.Secret)
 }
 
 func Authenticate(w http.ResponseWriter, r *http.Request, config *config.Config) (bool, error) {
