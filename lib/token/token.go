@@ -6,6 +6,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 )
 
+// GenerateToken return a token generated
 func GenerateToken(payload string, secret []byte, exp int64) (string, error) {
 	claims := jwt.MapClaims{}
 	claims["id"] = payload
@@ -27,6 +28,7 @@ func verify(token string, secret []byte) (*jwt.Token, error) {
 	})
 }
 
+// ValidateToken validate a token
 func ValidateToken(token string, secret []byte) (bool, error) {
 	tokenParsed, err := verify(token, secret)
 
@@ -37,6 +39,7 @@ func ValidateToken(token string, secret []byte) (bool, error) {
 	return tokenParsed.Valid, nil
 }
 
+// GetTokenData parse a token and get data
 func GetTokenData(token string, secret []byte) (interface{}, error) {
 	tokenParsed, err := verify(token, secret)
 
