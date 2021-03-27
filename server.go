@@ -29,42 +29,9 @@ type ServerRequest struct {
 func (s *Server) NewServer() error {
 	routes := Routes{config: s.config}
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Add("Content-Type", "application/json")
-
-		var resp interface{}
-		home := Routes{config: s.config}
-
-		switch r.Method {
-		case "GET":
-			resp = home.Home(w, r)
-		default:
-			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprint(w, "not found")
-
-			return
-		}
-
-		json.NewEncoder(w).Encode(resp)
-	})
-
-	http.HandleFunc("/auth", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Add("Content-Type", "application/json")
-
-		var resp interface{}
-
-		switch r.Method {
-		case "POST":
-			resp = routes.Auth(w, r)
-		default:
-			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprint(w, "not found")
-
-			return
-		}
-
-		json.NewEncoder(w).Encode(resp)
-	})
+	http.HandleFunc("/", routes.Home)
+	http.HandleFunc("/auth", routes.Auth)
+	http.HandleFunc("/validate", routes.Validate)
 
 	return http.ListenAndServe(s.port, nil)
 }
@@ -78,27 +45,47 @@ type Routes struct {
 	config *config.Config
 }
 
-func (h *Routes) Home(w http.ResponseWriter, r *http.Request) interface{} {
-	return Response{
+func (route *Routes) Home(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprint(w, "not found")
+
+		return
+	}
+
+	resp := Response{
 		Status:  http.StatusOK,
 		Message: "works",
 	}
+
+	json.NewEncoder(w).Encode(resp)
 }
 
-func (h *Routes) Auth(w http.ResponseWriter, r *http.Request) interface{} {
+func (route *Routes) Auth(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprint(w, "not found")
+
+		return
+	}
+
+	w.Header().Add("Content-Type", "application/json")
 	var resp interface{}
+
 	var data ServerRequest
 
 	json.NewDecoder(r.Body).Decode(&data)
 	defer r.Body.Close()
 
-	service, err := h.config.GetService(data.Id)
+	service, err := route.config.GetService(data.Id)
 
 	if err != nil {
 		resp = Response{
 			Status:  http.StatusInternalServerError,
 			Message: fmt.Sprintf("invalid id: %v", err),
 		}
+		json.NewEncoder(w).Encode(resp)
+		return
 	}
 
 	DAY := time.Hour * 24
@@ -116,6 +103,9 @@ func (h *Routes) Auth(w http.ResponseWriter, r *http.Request) interface{} {
 			Status:  http.StatusInternalServerError,
 			Message: fmt.Sprintf("error when try to create token: %v", err),
 		}
+
+		json.NewEncoder(w).Encode(resp)
+		return
 	}
 
 	resp = TokenResponse{
@@ -123,5 +113,23 @@ func (h *Routes) Auth(w http.ResponseWriter, r *http.Request) interface{} {
 		RefreshToken: refreshToken,
 	}
 
-	return resp
+	json.NewEncoder(w).Encode(resp)
+}
+
+func (route *Routes) Validate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprint(w, "not found")
+
+		return
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+
+	resp := Response{
+		Status:  http.StatusOK,
+		Message: "not implemented",
+	}
+
+	json.NewEncoder(w).Encode(resp)
 }
