@@ -2,13 +2,14 @@ package config
 
 import (
 	"fmt"
-	service "github.com/matherique/identity-service/cmd/service"
-	marshal "github.com/matherique/identity-service/lib/marshal"
 	"io/ioutil"
+
+	"github.com/matherique/identity-service/cmd/service"
+	"github.com/matherique/identity-service/lib/marshal"
 )
 
 type Config struct {
-	config   interface{}
+	Secret   []byte
 	services []service.Service
 }
 
@@ -35,6 +36,7 @@ func (c *Config) SetFromBytes(data []byte) error {
 	}
 
 	c.services = serviceList
+	c.Secret = []byte("a")
 
 	return nil
 }

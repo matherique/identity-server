@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/matherique/identity-service/cmd/config"
 	"github.com/matherique/identity-service/lib/token"
+	"github.com/matherique/identity-service/lib/utils"
 )
 
 var SECRET []byte = []byte("AAAA")
@@ -29,20 +29,15 @@ type ServerRequest struct {
 	Id string `json:"id"`
 }
 
-type TokenResponse struct {
-	AccessToken  string `json:"accessToken"`
-	RefreshToken string `json:"refreshToken"`
-}
-
 func (s *Server) NewServer() error {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			w.WriteHeader(http.StatusNotFound)
 			fmt.Fprint(w, "not found")
-
 			return
 		}
 
+		w.WriteHeader(http.StatusOK)
 		resp := Response{
 			Status:  http.StatusOK,
 			Message: "works",
@@ -61,135 +56,98 @@ func (s *Server) NewServer() error {
 			return
 		}
 
-		isAuth, err := Authenticate(w, r, s.config)
+		isAuth, err := utils.Authenticate(w, r, s.config.Secret)
 
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
-			fmt.Fprint(w, err)
 
-			return
+			json.NewEncoder(w).Encode(Response{
+				Status:  http.StatusUnauthorized,
+				Message: fmt.Sprintf("%v", err),
+			})
 		}
 
 		var resp interface{}
+		var data ServerRequest
+
+		json.NewDecoder(r.Body).Decode(&data)
+		defer r.Body.Close()
 
 		if isAuth {
-			resp = withAuth(w, r, s.config)
+
+			authHeader := r.Header.Get("Authorization")
+			accessToken := strings.TrimPrefix(authHeader, "Bearer ")
+
+			payload, err := token.GetTokenData(accessToken, SECRET)
+
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				resp = Response{
+					Status:  http.StatusInternalServerError,
+					Message: fmt.Sprintf("error in token parser: %v", err),
+				}
+				json.NewEncoder(w).Encode(resp)
+			}
+
+			resp, err = withAuth(payload.(string), data.Id, s.config)
+
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				resp = Response{
+					Status:  http.StatusInternalServerError,
+					Message: fmt.Sprintf("%v", err),
+				}
+
+				json.NewEncoder(w).Encode(resp)
+			}
+
 		} else {
-			resp = withNoAuth(w, r, s.config)
+			resp, err = withNoAuth(data.Id, s.config)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				resp = Response{
+					Status:  http.StatusInternalServerError,
+					Message: fmt.Sprintf("%v", err),
+				}
+
+				json.NewEncoder(w).Encode(resp)
+
+			}
 		}
 
+		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(resp)
 	})
 
 	return http.ListenAndServe(s.port, nil)
 }
 
-func withNoAuth(w http.ResponseWriter, r *http.Request, config *config.Config) interface{} {
-	var resp interface{}
-
-	var data ServerRequest
-
-	json.NewDecoder(r.Body).Decode(&data)
-	defer r.Body.Close()
-
-	service, err := config.GetService(data.Id)
-
-	resp = generateTokens(service.Id, SECRET)
+func withNoAuth(id string, config *config.Config) (interface{}, error) {
+	service, err := config.GetService(id)
 
 	if err != nil {
-		resp = Response{
-			Status:  http.StatusInternalServerError,
-			Message: fmt.Sprintf("invalid id: %v", err),
-		}
-		return resp
+		return nil, fmt.Errorf("invalid id: %v", err)
 	}
 
-	return resp
-
+	return utils.GenerateTokens(service.Id, SECRET)
 }
 
-func withAuth(w http.ResponseWriter, r *http.Request, config *config.Config) interface{} {
-	var resp interface{}
-	var data ServerRequest
-
-	authHeader := r.Header.Get("Authorization")
-	accessToken := strings.TrimPrefix(authHeader, "Bearer ")
-
-	payload, err := token.GetTokenData(accessToken, SECRET)
+func withAuth(id string, target string, config *config.Config) (interface{}, error) {
+	serviceA, err := config.GetService(id)
 
 	if err != nil {
-		resp = Response{
-			Status:  http.StatusInternalServerError,
-			Message: fmt.Sprintf("error in token parser: %v", err),
-		}
-		return resp
+		return nil, fmt.Errorf("invalid service: %v", err)
 	}
 
-	serviceA, err := config.GetService(payload.(string))
-
-	json.NewDecoder(r.Body).Decode(&data)
-	defer r.Body.Close()
-
-	serviceB, err := config.GetService(data.Id)
+	serviceB, err := config.GetService(target)
 
 	if err != nil {
-		resp = Response{
-			Status:  http.StatusInternalServerError,
-			Message: fmt.Sprintf("invalid service: %v", err),
-		}
-		return resp
+		return nil, fmt.Errorf("invalid service: %v", err)
 	}
 
 	if !serviceA.IsDependent(serviceB.Id) {
-		return Response{
-			Status:  http.StatusUnauthorized,
-			Message: fmt.Sprintf("%s not depends on %s", serviceA.Name, serviceB.Name),
-		}
+		return nil, fmt.Errorf("%s not depends on %s", serviceA.Name, serviceB.Name)
 	}
 
-	return generateTokens(serviceA.Id, serviceB.Secret)
-}
-
-func Authenticate(w http.ResponseWriter, r *http.Request, config *config.Config) (bool, error) {
-	authHeader := r.Header.Get("Authorization")
-
-	if authHeader == "" {
-		return false, nil
-	}
-
-	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-
-	isValid, err := token.ValidateToken(tokenString, SECRET)
-
-	if err != nil {
-		return false, err
-	}
-
-	if !isValid {
-		return false, fmt.Errorf("invalid token")
-	}
-
-	return true, nil
-}
-
-func generateTokens(payload string, secret []byte) interface{} {
-	DAY := time.Hour * 24
-
-	expAccessToken := time.Now().Add(DAY).Unix()
-	expRefreshToken := time.Now().Add(DAY * 7).Unix()
-
-	accessToken, err := token.GenerateToken(payload, secret, expAccessToken)
-	refreshToken, err := token.GenerateToken(payload, secret, expRefreshToken)
-
-	if err != nil {
-		return Response{
-			Status:  http.StatusInternalServerError,
-			Message: fmt.Sprintf("error in token creation: %v", err),
-		}
-	}
-
-	return TokenResponse{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-	}
+	return serviceA.GenerateToken(serviceB)
 }

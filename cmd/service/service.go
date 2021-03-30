@@ -1,5 +1,14 @@
 package service
 
+import (
+	"github.com/matherique/identity-service/lib/utils"
+)
+
+type Tokens struct {
+	AccessToken  string
+	RefreshToken string
+}
+
 type Service struct {
 	Id         string
 	Name       string
@@ -15,4 +24,8 @@ func (s *Service) IsDependent(id string) bool {
 	}
 
 	return false
+}
+
+func (s *Service) GenerateToken(target *Service) (interface{}, error) {
+	return utils.GenerateTokens(target.Id, target.Secret)
 }
