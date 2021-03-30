@@ -27,7 +27,13 @@ type ServerRequest struct {
 	Id string `json:"id"`
 }
 
-func (s *Server) NewServer() error {
+func NewServer(port string, config *config.Config) *Server {
+	return &Server{
+		port:   port,
+		config: config,
+	}
+}
+func (s *Server) StartServer() error {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
 			w.WriteHeader(http.StatusNotFound)

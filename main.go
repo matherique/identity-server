@@ -40,10 +40,10 @@ func main() {
 		port = "8000"
 	}
 
-	server := Server{
-		port:   fmt.Sprintf(":%s", port),
-		config: &config,
-	}
+	port = fmt.Sprintf(":%s", port)
+	server := NewServer(port, &config)
 
-	log.Fatal(server.NewServer())
+	if err = server.StartServer(); err != nil {
+		log.Fatal(err)
+	}
 }
