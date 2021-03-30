@@ -1,9 +1,12 @@
 package main
 
 import (
-	config "github.com/matherique/identity-service/cmd/config"
+	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
+
+	config "github.com/matherique/identity-service/cmd/config"
 )
 
 const CONFIG_FILE = "./default.yml"
@@ -15,21 +18,30 @@ func main() {
 		log.Fatal(err)
 	}
 
-	config := config.Config{}
+	secret := os.Getenv("SECRET")
+
+	if secret == "" {
+		panic(fmt.Errorf("missing environment variable SECRET"))
+	}
+
+	config := config.Config{
+		Secret: []byte(secret),
+	}
+
 	err = config.SetFromBytes(data)
 
 	if err != nil {
 		log.Println(err)
 	}
 
-	//s, err := config.GetService("service1")
+	port := os.Getenv("PORT")
 
-	if err != nil {
-		log.Println(err)
+	if port == "" {
+		port = "8000"
 	}
 
 	server := Server{
-		port:   ":8000",
+		port:   fmt.Sprintf(":%s", port),
 		config: &config,
 	}
 

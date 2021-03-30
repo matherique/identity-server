@@ -11,8 +11,6 @@ import (
 	"github.com/matherique/identity-service/lib/utils"
 )
 
-var SECRET []byte = []byte("AAAA")
-
 type HandlerRequest = func(http.ResponseWriter, *http.Request)
 
 type Response struct {
@@ -78,7 +76,7 @@ func (s *Server) NewServer() error {
 			authHeader := r.Header.Get("Authorization")
 			accessToken := strings.TrimPrefix(authHeader, "Bearer ")
 
-			payload, err := token.GetTokenData(accessToken, SECRET)
+			payload, err := token.GetTokenData(accessToken, s.config.Secret)
 
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
@@ -115,7 +113,6 @@ func (s *Server) NewServer() error {
 			}
 		}
 
-		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(resp)
 	})
 
@@ -129,7 +126,7 @@ func withNoAuth(id string, config *config.Config) (interface{}, error) {
 		return nil, fmt.Errorf("invalid id: %v", err)
 	}
 
-	return utils.GenerateTokens(service.Id, SECRET)
+	return utils.GenerateTokens(service.Id, config.Secret)
 }
 
 func withAuth(id string, target string, config *config.Config) (interface{}, error) {
