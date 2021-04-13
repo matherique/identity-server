@@ -1,7 +1,7 @@
 package service
 
 import (
-	"github.com/matherique/identity-service/lib/utils"
+	"github.com/matherique/identity-server/lib/utils"
 )
 
 type Tokens struct {

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"github.com/matherique/identity-service/cmd/service"
-	"github.com/matherique/identity-service/lib/marshal"
+	"github.com/matherique/identity-server/cmd/service"
+	"github.com/matherique/identity-server/lib/marshal"
 )
 
 type Config struct {

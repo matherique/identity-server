@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	config "github.com/matherique/identity-service/cmd/config"
+	config "github.com/matherique/identity-server/cmd/config"
 )
 
 const CONFIG_FILE = "./default.yml"

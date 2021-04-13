@@ -1,4 +1,4 @@
-module github.com/matherique/identity-service
+module github.com/matherique/identity-server
 
 go 1.15
 

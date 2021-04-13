@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/matherique/identity-service/lib/token"
+	"github.com/matherique/identity-server/lib/token"
 )
 
 type TokenResponse struct {

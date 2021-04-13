@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/matherique/identity-service/cmd/config"
-	"github.com/matherique/identity-service/lib/token"
-	"github.com/matherique/identity-service/lib/utils"
+	"github.com/matherique/identity-server/cmd/config"
+	"github.com/matherique/identity-server/lib/token"
+	"github.com/matherique/identity-server/lib/utils"
 )
 
 type HandlerRequest = func(http.ResponseWriter, *http.Request)
