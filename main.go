@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 
@@ -12,7 +11,7 @@ import (
 const CONFIG_FILE = "./default.yml"
 
 func main() {
-	data, err := ioutil.ReadFile(CONFIG_FILE)
+	data, err := os.ReadFile(CONFIG_FILE)
 
 	if err != nil {
 		log.Fatal(err)
